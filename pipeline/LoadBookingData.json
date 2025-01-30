@@ -1,6 +1,35 @@
 {
 	"name": "LoadBookingData",
 	"properties": {
+		"activities": [
+			{
+				"name": "BookingDataTransformation",
+				"type": "ExecuteDataFlow",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataflow": {
+						"referenceName": "BookingDataTransformation",
+						"type": "DataFlowReference"
+					},
+					"compute": {
+						"coreCount": 8,
+						"computeType": "General"
+					},
+					"traceLevel": "Fine",
+					"continuationSettings": {
+						"customizedCheckpointKey": "a0daea09-cc13-465b-88ac-5d358a762de6"
+					}
+				}
+			}
+		],
 		"annotations": []
 	}
 }
