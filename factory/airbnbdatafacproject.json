@@ -1,0 +1,9 @@
+{
+	"name": "airbnbdatafacproject",
+	"location": "northeurope",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "fe63fb97-639e-4911-a485-266006f2e3e5",
+		"tenantId": "6e7b6c08-d89d-4a5c-a76c-72481153ae57"
+	}
+}
