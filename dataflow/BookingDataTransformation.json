@@ -22,7 +22,12 @@
 			],
 			"sinks": [
 				{
-					"name": "sink1"
+					"dataset": {
+						"referenceName": "BookingFactDataSynapse",
+						"type": "DatasetReference"
+					},
+					"name": "SynapseFactWrite",
+					"description": "Export data to BookingFactDataSynapse"
 				}
 			],
 			"transformations": [
@@ -40,7 +45,7 @@
 					"description": "Insert, Update, Delete will be done on columns of SynapseData@booking_id"
 				},
 				{
-					"name": "select1"
+					"name": "FinalColumns"
 				}
 			],
 			"scriptLines": [
@@ -111,46 +116,55 @@
 				"lookup1 alterRow(insertIf(isNull(SynapseData@booking_id)),",
 				"     updateIf(not(isNull(SynapseData@booking_id)))) ~> AlterRowForUpdate",
 				"AlterRowForUpdate select(mapColumn(",
+				"          check_out_date = DerivedColumn@check_out_date,",
+				"          customer_id = DerivedColumn@customer_id,",
 				"          booking_id = DerivedColumn@booking_id,",
 				"          property_id = DerivedColumn@property_id,",
-				"          customer_id = DerivedColumn@customer_id,",
 				"          owner_id = DerivedColumn@owner_id,",
 				"          check_in_date = DerivedColumn@check_in_date,",
-				"          check_out_date = DerivedColumn@check_out_date,",
 				"          booking_date = DerivedColumn@booking_date,",
 				"          amount = DerivedColumn@amount,",
 				"          currency = DerivedColumn@currency,",
-				"          property_location,",
 				"          timestamp = DerivedColumn@timestamp,",
 				"          stay_duration = DerivedColumn@stay_duration,",
 				"          booking_year = DerivedColumn@booking_year,",
 				"          booking_month = DerivedColumn@booking_month,",
 				"          full_address = DerivedColumn@full_address,",
 				"          city = DerivedColumn@city,",
-				"          country = DerivedColumn@country,",
-				"          booking_id = SynapseData@booking_id,",
-				"          property_id = SynapseData@property_id,",
-				"          customer_id = SynapseData@customer_id,",
-				"          owner_id = SynapseData@owner_id,",
-				"          check_in_date = SynapseData@check_in_date,",
-				"          check_out_date = SynapseData@check_out_date,",
-				"          booking_date = SynapseData@booking_date,",
-				"          amount = SynapseData@amount,",
-				"          currency = SynapseData@currency,",
-				"          city = SynapseData@city,",
-				"          country = SynapseData@country,",
-				"          full_address = SynapseData@full_address,",
-				"          stay_duration = SynapseData@stay_duration,",
-				"          booking_year = SynapseData@booking_year,",
-				"          booking_month = SynapseData@booking_month,",
-				"          timestamp = SynapseData@timestamp",
+				"          country = DerivedColumn@country",
 				"     ),",
-				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> select1",
-				"select1 sink(allowSchemaDrift: true,",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> FinalColumns",
+				"FinalColumns sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
+				"     input(",
+				"          booking_id as string,",
+				"          property_id as string,",
+				"          customer_id as integer,",
+				"          owner_id as string,",
+				"          check_in_date as date,",
+				"          check_out_date as date,",
+				"          booking_date as timestamp,",
+				"          amount as double,",
+				"          currency as string,",
+				"          city as string,",
+				"          country as string,",
+				"          full_address as string,",
+				"          stay_duration as long,",
+				"          booking_year as integer,",
+				"          booking_month as integer,",
+				"          timestamp as timestamp",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:true,",
+				"     upsertable:false,",
+				"     keys:[(booking_id)],",
+				"     format: 'table',",
+				"     staged: true,",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> sink1"
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> SynapseFactWrite"
 			]
 		}
 	}
