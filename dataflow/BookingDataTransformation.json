@@ -27,6 +27,9 @@
 				},
 				{
 					"name": "DerivedColumn"
+				},
+				{
+					"name": "lookup1"
 				}
 			],
 			"scriptLines": [
@@ -88,7 +91,12 @@
 				"          check_in_date = check_in_date,",
 				"          property_id = property_id,",
 				"          amount = amount,",
-				"          currency = currency) ~> DerivedColumn"
+				"          currency = currency) ~> DerivedColumn",
+				"DerivedColumn, SynapseData lookup(DerivedColumn@booking_id == SynapseData@booking_id,",
+				"     multiple: false,",
+				"     pickup: 'first',",
+				"     desc(SynapseData@timestamp, true),",
+				"     broadcast: 'auto')~> lookup1"
 			]
 		}
 	}
