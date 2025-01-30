@@ -27,7 +27,11 @@
 						"type": "DatasetReference"
 					},
 					"name": "SynapseFactWrite",
-					"description": "Export data to BookingFactDataSynapse"
+					"description": "Export data to BookingFactDataSynapse",
+					"rejectedDataLinkedService": {
+						"referenceName": "AzureDataLakeStorage1",
+						"type": "LinkedServiceReference"
+					}
 				}
 			],
 			"transformations": [
