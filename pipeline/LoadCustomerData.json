@@ -1,5 +1,5 @@
 {
-	"name": "Load Customer Data",
+	"name": "LoadCustomerData",
 	"properties": {
 		"activities": [
 			{
@@ -65,7 +65,10 @@
 										"type": "AzureBlobFSReadSettings",
 										"recursive": true,
 										"wildcardFolderPath": "customer_rawdata",
-										"wildcardFileName": "@item().name",
+										"wildcardFileName": {
+											"value": "@item().name",
+											"type": "Expression"
+										},
 										"enablePartitionDiscovery": false
 									},
 									"formatSettings": {
