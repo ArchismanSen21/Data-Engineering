@@ -773,7 +773,11 @@
 								"type": "DatasetReference"
 							},
 							"name": "SynapseFactWrite",
-							"description": "Export data to BookingFactDataSynapse"
+							"description": "Export data to BookingFactDataSynapse",
+							"rejectedDataLinkedService": {
+								"referenceName": "AzureDataLakeStorage1",
+								"type": "LinkedServiceReference"
+							}
 						}
 					],
 					"transformations": [
@@ -916,7 +920,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/BookingDataCosmos')]",
-				"[concat(variables('factoryId'), '/datasets/BookingFactDataSynapse')]"
+				"[concat(variables('factoryId'), '/datasets/BookingFactDataSynapse')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
 			]
 		},
 		{
