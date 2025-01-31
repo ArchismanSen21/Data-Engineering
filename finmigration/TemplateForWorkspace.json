@@ -323,10 +323,105 @@
 							"driverSize": "Small",
 							"numExecutors": null
 						}
+					},
+					{
+						"name": "success",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "SilverToGold",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": {
+									"value": "application/json",
+									"type": "Expression"
+								}
+							},
+							"url": "https://prod-27.northeurope.logic.azure.com:443/workflows/404e901f97c643b39fcc0b2c12569026/triggers/When_a_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_a_HTTP_request_is_received%2Frun&sv=1.0&sig=0wMlqJUhEwck-Z-OLMNUJ-AjyTIF4MCVqx7O7blnaoY",
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							},
+							"body": {
+								"value": "{\n    \"to\":\"@{pipeline().parameters.to}\",\n    \"subject\":\"@{pipeline().parameters.subjectSuccess}\",\n    \"email\":\"@{pipeline().parameters.emailSuccess}\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "failure",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "SilverToGold",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"url": "https://prod-27.northeurope.logic.azure.com:443/workflows/404e901f97c643b39fcc0b2c12569026/triggers/When_a_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_a_HTTP_request_is_received%2Frun&sv=1.0&sig=0wMlqJUhEwck-Z-OLMNUJ-AjyTIF4MCVqx7O7blnaoY",
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							},
+							"body": {
+								"value": "{\n    \"to\": \"@{pipeline().parameters.to}\",\n    \"subject\":\"@{pipeline().parameters.subjectFailure}\",\n    \"email\":\"@{pipeline().parameters.emailFailure}\"\n}",
+								"type": "Expression"
+							}
+						}
 					}
 				],
 				"policy": {
 					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"to": {
+						"type": "string",
+						"defaultValue": "archismansen8113@gmail.com"
+					},
+					"subjectSuccess": {
+						"type": "string",
+						"defaultValue": "Fintech Pipeline Execution - SUCCESS"
+					},
+					"emailSuccess": {
+						"type": "string",
+						"defaultValue": "The Fintech pipeline execution is a success"
+					},
+					"subjectFailure": {
+						"type": "string",
+						"defaultValue": "Fintech Pipeline Execution - FAILURE"
+					},
+					"emailFailure": {
+						"type": "string",
+						"defaultValue": "The Fintech pipeline is not properly execution  please connect to the Support Team."
+					}
 				},
 				"annotations": []
 			},
@@ -335,6 +430,7 @@
 				"[concat(variables('workspaceId'), '/notebooks/BronzeToSilverDataProcess')]",
 				"[concat(variables('workspaceId'), '/bigDataPools/sparkfintech')]",
 				"[concat(variables('workspaceId'), '/notebooks/SilverToGoldDataProcess')]",
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
 				"[concat(variables('workspaceId'), '/datasets/Parquet1')]"
 			]
 		},
@@ -1584,7 +1680,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "de40b849-fb6f-4dfa-98ab-aca3bdfcdcab"
+						"spark.autotune.trackingId": "b30a078e-06fe-4a92-8a43-7cf968eb07a1"
 					}
 				},
 				"metadata": {
@@ -1602,7 +1698,6 @@
 				"cells": [
 					{
 						"cell_type": "code",
-						"metadata": {},
 						"source": [
 							"from pyspark.sql.functions import *\r\n",
 							"\r\n",
