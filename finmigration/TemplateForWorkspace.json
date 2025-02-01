@@ -128,6 +128,304 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/FintechPipeline')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "GetTableList",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT \r\n    TABLE_SCHEMA AS SchemaName,\r\n    TABLE_NAME AS TableName\r\nFROM \r\n    INFORMATION_SCHEMA.TABLES\r\nWHERE \r\n    TABLE_TYPE = 'BASE TABLE' and TABLE_SCHEMA = 'fintech'\r\nORDER BY \r\n    SchemaName, TableName;",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "FintechTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEachTable",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "GetTableList",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('GetTableList').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data To Bronze Layer",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@{concat('SELECT * FROM ',item().SchemaName,'.',item().TableName)}",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FintechTable",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "Parquet1",
+											"type": "DatasetReference",
+											"parameters": {
+												"tablename": {
+													"value": "@item().TableName",
+													"type": "Expression"
+												},
+												"schemaname": {
+													"value": "@item().SchemaName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "BronzeToSilver",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "ForEachTable",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "BronzeToSilverDataProcess",
+								"type": "NotebookReference"
+							},
+							"snapshot": true,
+							"executorSize": "Small",
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"driverSize": "Small",
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "SilverToGold",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "BronzeToSilver",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "SilverToGoldDataProcess",
+								"type": "NotebookReference"
+							},
+							"snapshot": true,
+							"executorSize": "Small",
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"driverSize": "Small",
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "success",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "SilverToGold",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": {
+									"value": "application/json",
+									"type": "Expression"
+								}
+							},
+							"url": "https://prod-27.northeurope.logic.azure.com:443/workflows/404e901f97c643b39fcc0b2c12569026/triggers/When_a_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_a_HTTP_request_is_received%2Frun&sv=1.0&sig=0wMlqJUhEwck-Z-OLMNUJ-AjyTIF4MCVqx7O7blnaoY",
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							},
+							"body": {
+								"value": "{\n    \"to\":\"@{pipeline().parameters.to}\",\n    \"subject\":\"@{pipeline().parameters.subjectSuccess}\",\n    \"email\":\"@{pipeline().parameters.emailSuccess}\"\n}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "failure",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "SilverToGold",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/json"
+							},
+							"url": "https://prod-27.northeurope.logic.azure.com:443/workflows/404e901f97c643b39fcc0b2c12569026/triggers/When_a_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_a_HTTP_request_is_received%2Frun&sv=1.0&sig=0wMlqJUhEwck-Z-OLMNUJ-AjyTIF4MCVqx7O7blnaoY",
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							},
+							"body": {
+								"value": "{\n    \"to\": \"@{pipeline().parameters.to}\",\n    \"subject\":\"@{pipeline().parameters.subjectFailure}\",\n    \"email\":\"@{pipeline().parameters.emailFailure}\"\n}",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"to": {
+						"type": "string",
+						"defaultValue": "archismansen8113@gmail.com"
+					},
+					"subjectSuccess": {
+						"type": "string",
+						"defaultValue": "Fintech Pipeline Execution - SUCCESS"
+					},
+					"emailSuccess": {
+						"type": "string",
+						"defaultValue": "The Fintech pipeline execution is a success"
+					},
+					"subjectFailure": {
+						"type": "string",
+						"defaultValue": "Fintech Pipeline Execution - FAILURE"
+					},
+					"emailFailure": {
+						"type": "string",
+						"defaultValue": "The Fintech pipeline is not properly execution  please connect to the Support Team."
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/FintechTable')]",
+				"[concat(variables('workspaceId'), '/notebooks/BronzeToSilverDataProcess')]",
+				"[concat(variables('workspaceId'), '/notebooks/SilverToGoldDataProcess')]",
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('workspaceId'), '/datasets/Parquet1')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/LoadBookingData')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -1271,6 +1569,26 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script bookmyshow_bookings')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "Create schema bookymyshow;\n\nCREATE TABLE bookymyshow.bookings_fact (\n    order_id NVARCHAR(50) NOT NULL,\n    booking_time DATETIME2,\n    customer_id NVARCHAR(50),\n    customer_name NVARCHAR(100),\n    customer_email NVARCHAR(100),\n    event_id NVARCHAR(50),\n    event_name NVARCHAR(100),\n    event_location NVARCHAR(200),\n    seat_number NVARCHAR(10),\n    seat_price FLOAT,\n    event_category NVARCHAR(50),\n    booking_day_of_week NVARCHAR(20),\n    booking_hour INT,\n    payment_id NVARCHAR(50),\n    payment_time DATETIME2,\n    amount FLOAT,\n    payment_method NVARCHAR(50),\n    payment_type NVARCHAR(50),\n    booking_event_time DATETIME2,\n    payment_event_time DATETIME2\n);\n\n\nselect * from bookymyshow.bookings_fact;\nSELECT COUNT(*) FROM bookymyshow.bookings_fact;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "bookmyshow",
+						"poolName": "bookmyshow"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/BronzeToSilverDataProcess')]",
 			"type": "Microsoft.Synapse/workspaces/notebooks",
 			"apiVersion": "2019-06-01-preview",
@@ -1591,22 +1909,11 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('workspaceName'), '/SQL script bookmyshow_bookings')]",
-			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"name": "[concat(parameters('workspaceName'), '/bookmyshow')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
-				"content": {
-					"query": "Create schema bookymyshow;\n\nCREATE TABLE bookymyshow.bookings_fact (\n    order_id NVARCHAR(50) NOT NULL,\n    booking_time DATETIME2,\n    customer_id NVARCHAR(50),\n    customer_name NVARCHAR(100),\n    customer_email NVARCHAR(100),\n    event_id NVARCHAR(50),\n    event_name NVARCHAR(100),\n    event_location NVARCHAR(200),\n    seat_number NVARCHAR(10),\n    seat_price FLOAT,\n    event_category NVARCHAR(50),\n    booking_day_of_week NVARCHAR(20),\n    booking_hour INT,\n    payment_id NVARCHAR(50),\n    payment_time DATETIME2,\n    amount FLOAT,\n    payment_method NVARCHAR(50),\n    payment_type NVARCHAR(50),\n    booking_event_time DATETIME2,\n    payment_event_time DATETIME2\n);\n\nselect * from bookymyshow.bookings_fact;",
-					"metadata": {
-						"language": "sql"
-					},
-					"currentConnection": {
-						"databaseName": "master",
-						"poolName": "Built-in"
-					},
-					"resultLimit": 5000
-				},
-				"type": "SqlQuery"
+				"annotations": []
 			},
 			"dependsOn": []
 		}
